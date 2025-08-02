@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT  \n                    id,\n                    last_updated,\n                    next_tick,\n                    last_tick,\n                    job_type,\n                    count,\n                    ran,\n                    stopped,\n                    time_offset_seconds,\n                    extra,\n                    schedule,\n                    repeated_every,\n                    repeating\n                FROM jobs WHERE id = $1\n                LIMIT 1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_updated",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "next_tick",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_tick",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "job_type",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "ran",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "stopped",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "time_offset_seconds",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "extra",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 10,
+        "name": "schedule",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "repeated_every",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "repeating",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "2a7c5017b5c70d926165208d368646b2ddb30801a7c2b454ba745faba3e1500d"
+}

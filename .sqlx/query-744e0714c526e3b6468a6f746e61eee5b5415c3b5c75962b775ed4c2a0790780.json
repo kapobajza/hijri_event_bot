@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT next_tick FROM jobs WHERE next_tick > 0 AND next_tick > $1 ORDER BY next_tick ASC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "next_tick",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "744e0714c526e3b6468a6f746e61eee5b5415c3b5c75962b775ed4c2a0790780"
+}

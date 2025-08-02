@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT DISTINCT states.id\n                    FROM notification_states AS states\n                    RIGHT JOIN notifications AS n ON n.id = states.id\n                    WHERE n.job_id = $1 AND states.state = $2\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f18639b88fb5767ac8e74dbe3e030dc632c38349bad4aa9f2546ae285ba56257"
+}

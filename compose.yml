@@ -1,0 +1,43 @@
+name: hijri-event-bot
+
+services:
+  bot-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - TELOXIDE_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD-postgres}
+      - DB_NAME=${POSTGRES_DB-hijri_db}
+      - DB_HOST=db
+      - RUST_LOG=${RUST_LOG-info}
+      - RUST_BACKTRACE=${RUST_BACKTRACE-1}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD-postgres}
+      POSTGRES_DB: ${POSTGRES_DB-hijri_db}
+    ports:
+      - "${HOST_PORT-5432}:5432"
+    volumes:
+      - hijri_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER-postgres} -d ${POSTGRES_DB-hijri_db}",
+        ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+volumes:
+  hijri_db_data:

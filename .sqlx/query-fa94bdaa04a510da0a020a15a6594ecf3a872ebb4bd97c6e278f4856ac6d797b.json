@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO notifications (id, job_id, extra) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET job_id = EXCLUDED.job_id, extra = EXCLUDED.extra",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fa94bdaa04a510da0a020a15a6594ecf3a872ebb4bd97c6e278f4856ac6d797b"
+}

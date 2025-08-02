@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM notification_states WHERE id = $1 AND state = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "90e8b26e2fc242f07de7cb77ba93a455dfdd067a333d6f3527c69c61871c0d53"
+}

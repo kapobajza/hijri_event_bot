@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO jobs (id, last_updated, next_tick, last_tick, job_type, count, ran, stopped, schedule, repeating, repeated_every, time_offset_seconds, extra) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n                ON CONFLICT (id) DO UPDATE SET last_updated = EXCLUDED.last_updated,\n                next_tick = EXCLUDED.next_tick,\n                last_tick = EXCLUDED.last_tick,\n                job_type = EXCLUDED.job_type,\n                count = EXCLUDED.count,\n                ran = EXCLUDED.ran,\n                stopped = EXCLUDED.stopped,\n                schedule = EXCLUDED.schedule,\n                repeating = EXCLUDED.repeating,\n                repeated_every = EXCLUDED.repeated_every,\n                time_offset_seconds = EXCLUDED.time_offset_seconds,\n                extra = EXCLUDED.extra\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int4",
+        "Int4",
+        "Bool",
+        "Bool",
+        "Text",
+        "Bool",
+        "Int4",
+        "Int4",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5e9d1d2f9bac1fa23ac6fa6312a083ae4bee667518c5aa6f26df4711d7545b44"
+}
