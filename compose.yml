@@ -1,7 +1,7 @@
 name: hijri-event-bot
 
 services:
-  bot-app:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,6 +15,7 @@ services:
       - RUST_LOG=${RUST_LOG-info}
       - RUST_BACKTRACE=${RUST_BACKTRACE-1}
     platform: linux/amd64
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -25,6 +26,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD-postgres}
       POSTGRES_DB: ${POSTGRES_DB-hijri_db}
+    restart: unless-stopped
     ports:
       - "${HOST_PORT-5432}:5432"
     volumes:
