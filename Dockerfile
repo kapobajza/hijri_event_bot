@@ -1,50 +1,55 @@
-FROM rust:1.87-slim AS builder
+ARG RUST_VERSION=1.86.0
+ARG APP_NAME=hijri_event_bot
 
+FROM rust:${RUST_VERSION}-slim AS build
+ARG APP_NAME
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libpq-dev \
-    protobuf-compiler \
-    && rm -rf /var/lib/apt/lists/*
+    protobuf-compiler
 
-# Copy manifest files for dependency caching
-COPY Cargo.toml Cargo.lock .sqlx ./
+ENV OPENSSL_DIR=/usr
+ENV OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu
+ENV OPENSSL_INCLUDE_DIR=/usr/include/openssl
 
-RUN echo "Datbase URL: ${DATABASE_URL} $DATABASE_URL"
+RUN --mount=type=bind,source=src,target=src \
+    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    --mount=type=bind,source=.sqlx,target=.sqlx \
+    --mount=type=bind,source=migrations,target=migrations \
+    --mount=type=bind,source=locales,target=locales \
+    --mount=type=cache,target=/app/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+cargo build --locked --release && \
+cp ./target/release/$APP_NAME /bin/$APP_NAME
 
-# Create a dummy main.rs to build dependencies
-RUN mkdir -p src && \
-    echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
 
-# Copy actual source code
-COPY . .
+FROM debian:bookworm-slim AS final
+ARG APP_NAME
 
-# Build the application
-RUN cargo build --release
-
-# Runtime stage
-FROM rust:1.87-slim
-
-# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
-    libssl-dev \
-    libpq-dev \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    openssl
 
-WORKDIR /app
+# Create a non-privileged user that the app will run under.
+# See https://docs.docker.com/go/dockerfile-user-best-practices/
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    appuser
+USER appuser
 
-# Copy the binary from the builder stage
-COPY --from=builder /app/target/release/hijri_event_bot /app/hijri_event_bot
+# Copy the executable from the "build" stage.
+COPY --from=build /bin/$APP_NAME /bin/
 
-# Copy migrations folder for sqlx
-COPY --from=builder /app/migrations /app/migrations
-
-# Copy locale files
-COPY --from=builder /app/locales /app/locales
-
-CMD ["./hijri_event_bot"]
+# What the container should run when it is started.
+CMD ["/bin/hijri_event_bot"]

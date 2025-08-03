@@ -127,7 +127,7 @@ impl HijriApi {
     }
 
     pub async fn get_current_hijri_date(&self) -> Result<CurrentDateResponse, AppError> {
-        let date_now = chrono::Utc::now();
+        let date_now = chrono::Utc::now().with_timezone(&chrono_tz::Tz::Europe__Sarajevo);
 
         let hijri_data = self
             .do_request::<HijriApiResponse>(
