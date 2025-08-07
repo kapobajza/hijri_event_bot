@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/kapobajza/hijri_event_bot:prod
+    image: ghcr.io/kapobajza/hijri_event_bot:${GIT_COMMIT_HASH-prod}
     build: !reset null
     secrets:
       - db-password
@@ -11,6 +11,8 @@ services:
     deploy:
       update_config:
         order: start-first
+    depends_on:
+      - db
 
   db:
     secrets:

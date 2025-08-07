@@ -11,8 +11,6 @@ services:
       - RUST_LOG=${RUST_LOG-info}
       - RUST_BACKTRACE=${RUST_BACKTRACE-1}
     restart: unless-stopped
-    depends_on:
-      - db
 
   db:
     image: postgres:17

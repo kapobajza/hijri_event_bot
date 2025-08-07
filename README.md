@@ -15,6 +15,9 @@ This is a Telegram bot which provides notifications based on the lunar calendar,
 
 ## Running the Bot
 
+> [!NOTE]
+> Make sure that you have Docker and Docker Compose installed on your machine.
+
 1. Clone the repository:
    ```bash
    git clone
@@ -24,20 +27,12 @@ This is a Telegram bot which provides notifications based on the lunar calendar,
    cd hijri_event_bot
    ```
 3. [Create a Telegram bot](https://core.telegram.org/bots/tutorial) and get your bot token.
-4. Make sure you have a PostgreSQL database set up. The default connection string is `postgres://postgres:postgres@localhost:5433/hijri_event_bot`. But you can provide your own values to override it, by setting the env variables. for example:
+4. Run the app:
    ```bash
-    export DB_USER="postgres"
-    export DB_PASSWORD="postgres"
-    export DB_HOST="localhost"
-    export DB_PORT="5433"
-    export DB_NAME="hijri_event_bot"
+   TELEGRAM_BOT_TOKEN=the_token_you_got_from_step_3 docker compose -f compose.yml -f compose.local.yml up
    ```
-5. Set the `TELEGRAM_BOT_TOKEN` environment variable with your bot token:
+5. The default connection string is `postgres://postgres:postgres@localhost:5433/hijri_event_bot`. But you can provide your own values to override it, by overriding the env. For example:
    ```bash
-   export TELEGRAM_BOT_TOKEN="your_bot_token_here"
+    DB_USER=my_user DB_NAME=my_db TELEGRAM_BOT_TOKEN=your_telegram_token docker compose -f compose.yml -f compose.local.yml up
    ```
-6. Run the bot:
-   ```bash
-   cargo run
-   ```
-7. Interact with the bot on Telegram by sending commands like `/help` or `/date`.
+6. Interact with the bot on Telegram by sending commands like `/help` or `/date`.
