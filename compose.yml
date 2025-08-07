@@ -1,30 +1,23 @@
-name: hijri-event-bot
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      - TELOXIDE_TOKEN=${TELEGRAM_BOT_TOKEN}
       - DB_PORT=5432
       - DB_USER=${POSTGRES_USER-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD-postgres}
       - DB_NAME=${POSTGRES_DB-hijri_db}
       - DB_HOST=db
       - RUST_LOG=${RUST_LOG-info}
       - RUST_BACKTRACE=${RUST_BACKTRACE-1}
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
-      db:
-        condition: service_healthy
+      - db
 
   db:
     image: postgres:17
     environment:
       POSTGRES_USER: ${POSTGRES_USER-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD-postgres}
       POSTGRES_DB: ${POSTGRES_DB-hijri_db}
     restart: unless-stopped
     ports:

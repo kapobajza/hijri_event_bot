@@ -9,7 +9,7 @@ use crate::{
     bot::TelegramBot,
     db::{
         postgres_metadata_store::PostgresMetadataStore,
-        postgres_notification_store::PostgresNotificationStore,
+        postgres_notification_store::PostgresNotificationStore, tables::JobExtensionType,
     },
     i18n::I18n,
 };
@@ -98,20 +98,82 @@ impl Scheduler {
         match white_days_message_job {
             Ok(job) => {
                 if let Err(err) = self.sched.add(job.clone()).await {
-                    let res = sqlx::query!(
-                        "INSERT INTO job_extensions (job_id, user_id) VALUES ($1, $2)",
+                    log::error!("Failed to schedule white days message job: {}", err);
+                } else {
+                    let user_has_job = sqlx::query_scalar!(
+                        "
+                            SELECT EXISTS(
+                                SELECT 1 FROM job_extensions AS je
+                                JOIN users_jobs AS uj ON uj.job_id = je.job_id 
+                                WHERE je.type = $1 AND user_id = $2 LIMIT 1
+                            )
+                        ",
+                        JobExtensionType::WhiteDaysMessage as i32,
+                        user_id
+                    )
+                    .fetch_one(&*pool)
+                    .await;
+
+                    match user_has_job {
+                        Ok(res) => {
+                            if res.unwrap_or(false) {
+                                log::info!(
+                                    "User {} already has a white days message job scheduled.",
+                                    user_id,
+                                );
+                                return;
+                            }
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to check if user has white days message job: {}",
+                                e
+                            );
+                            return;
+                        }
+                    }
+
+                    let mut tx = pool.begin().await.expect("Failed to begin transaction");
+
+                    let je_res = sqlx::query!(
+                        "INSERT INTO job_extensions (job_id, type) VALUES ($1, $2)",
+                        job.guid(),
+                        JobExtensionType::WhiteDaysMessage as i32
+                    )
+                    .execute(&mut *tx)
+                    .await;
+
+                    if let Err(e) = je_res {
+                        tx.rollback().await.expect("Failed to rollback transaction");
+                        log::error!(
+                            "Failed to insert job extension job id: {}, error: {}",
+                            job.guid(),
+                            e
+                        );
+                        return;
+                    }
+
+                    let uj_res = sqlx::query!(
+                        "INSERT INTO users_jobs (id, job_id, user_id) VALUES ($1, $2, $3)",
+                        Uuid::new_v4(),
                         job.guid(),
                         user_id
                     )
-                    .execute(&*pool)
+                    .execute(&mut *tx)
                     .await;
 
-                    if let Err(e) = res {
-                        log::error!("Failed to insert job extension: {}", e);
+                    if let Err(e) = uj_res {
+                        tx.rollback().await.expect("Failed to rollback transaction");
+                        log::error!(
+                            "Failed to insert user job. job id: {}, user id: {}, error: {}",
+                            job.guid(),
+                            user_id,
+                            e
+                        );
+                        return;
                     }
 
-                    log::error!("Failed to schedule white days message job: {}", err);
-                } else {
+                    tx.commit().await.expect("Failed to commit transaction");
                     log::info!("White days message job scheduled successfully.");
                 }
             }

@@ -1,0 +1,25 @@
+services:
+  app:
+    image: ghcr.io/kapobajza/hijri_event_bot:prod
+    build: !reset null
+    secrets:
+      - db-password
+      - telegram-bot-token
+    environment:
+      - TELOXIDE_TOKEN=!reset null
+      - DB_PASSWORD=!reset null
+    deploy:
+      update_config:
+        order: start-first
+
+  db:
+    secrets:
+      - db-password
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+
+secrets:
+  db-password:
+    external: true
+  telegram-bot-token:
+    external: true

@@ -1,4 +1,0 @@
-services:
-  app:
-    image: ghcr.io/kapobajza/hijri_event_bot:latest
-    build: !reset null

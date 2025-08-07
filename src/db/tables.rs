@@ -104,3 +104,17 @@ impl From<Job> for Option<JobStoredData> {
 pub struct NotificationState {
     pub state: i32,
 }
+
+#[derive(sqlx::Type)]
+pub enum JobExtensionType {
+    WhiteDaysMessage = 1,
+}
+
+impl From<i32> for JobExtensionType {
+    fn from(value: i32) -> Self {
+        match value {
+            1 => JobExtensionType::WhiteDaysMessage,
+            _ => panic!("Unknown JobExtensionType value: {}", value),
+        }
+    }
+}

@@ -27,6 +27,8 @@ RUN --mount=type=bind,source=src,target=src \
 cargo build --locked --release && \
 cp ./target/release/$APP_NAME /bin/$APP_NAME
 
+COPY entrypoint.sh /app/entrypoint.sh
+
 
 FROM debian:bookworm-slim AS final
 ARG APP_NAME
@@ -34,6 +36,10 @@ ARG APP_NAME
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     openssl
+
+COPY --from=build /app/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
@@ -48,8 +54,9 @@ RUN adduser \
     appuser
 USER appuser
 
-# Copy the executable from the "build" stage.
 COPY --from=build /bin/$APP_NAME /bin/
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # What the container should run when it is started.
 CMD ["/bin/hijri_event_bot"]

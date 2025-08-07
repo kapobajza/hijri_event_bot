@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                                    INSERT INTO users (id, chat_id, username) \n                                    VALUES ($1, $2, $3)\n                                    ON CONFLICT (chat_id)\n                                    DO UPDATE SET chat_id = EXCLUDED.chat_id\n                                    RETURNING id\n                                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0e512465c81c983f5dd7649d82dcbb793e964080e012cbb10e96d33fb6c19592"
+}

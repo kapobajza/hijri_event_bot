@@ -1,15 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO job_extensions (job_id, user_id) VALUES ($1, $2)",
+  "query": "INSERT INTO users_jobs (id, job_id, user_id) VALUES ($1, $2, $3)",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid",
         "Uuid"
       ]
     },
     "nullable": []
   },
-  "hash": "48db9f1e48b9415dde19250f5946c357c35175706fd650944dd8bbc951d1781f"
+  "hash": "9547d289c77553bbd1d007644fa65c7d4c391cdf89e6d7303a7ca281855289c8"
 }

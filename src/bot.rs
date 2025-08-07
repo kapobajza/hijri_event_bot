@@ -98,17 +98,27 @@ impl TelegramBot {
                         Command::Start => {
                             log::debug!("User started the bot: {:?}", msg.chat.id);
                             let user_id = Uuid::new_v4();
-                            sqlx::query!(
-                                "INSERT INTO users (id, chat_id, username) VALUES ($1, $2, $3) ON CONFLICT (chat_id) DO NOTHING",
+                            let id = sqlx::query_scalar!(
+                                "
+                                    INSERT INTO users (id, chat_id, username) 
+                                    VALUES ($1, $2, $3)
+                                    ON CONFLICT (chat_id)
+                                    DO UPDATE SET chat_id = EXCLUDED.chat_id
+                                    RETURNING id
+                                ",
                                 user_id,
                                 msg.chat.id.0 as i64,
                                 msg.from.and_then(|m| m.username.clone())
                             )
-                            .execute(&*pool).await.map_err(|e| {
+                            .fetch_one(&*pool)
+                            .await
+                            .map_err(|e| {
                                 log::error!("Failed to insert user: {}", e);
                                 RequestError::Api(ApiError::CantInitiateConversation)
                             })?;
-                            scheduler.schedule_white_days_message(bot.clone(), msg.chat.id.0, user_id).await;
+                            scheduler
+                                .schedule_white_days_message(bot.clone(), msg.chat.id.0, id)
+                                .await;
                             TelegramBot::send_message(&bot, msg.chat.id, i18n.t("welcome_message"))
                                 .await;
                         }
