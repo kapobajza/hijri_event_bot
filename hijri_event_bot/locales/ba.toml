@@ -4,7 +4,6 @@ help = """Dostupne komande:
 /help - Prikaži postojeće komande
 /date - Prikaži trenutni datum po lunarnoj kalendarskoj godini"""
 current_hijri_date = "Današnji datum po lunarnom kalendaru je: {day}.{month}.{year}. Mjesec je {month_name}/{month_ar}."
-error_current_date = "Greška pri dobijanju trenutnog datuma. Molimo pokušajte ponovo kasnije."
 welcome_message = """Dobro došli u Hijri bot!
 
 Ovdje možete dobiti različite obavijesti vezane za lunarni kalendar.
@@ -37,3 +36,6 @@ Od Abdullaha ibn 'Amra, radijallahu anhuma, se prenosi da ga je Allahov Poslanik
 
 Sahih Buhari – Tom 3, Stranica 40, Hadis broj 1979.
 Sahih Muslim – Tom 2, Stranica 812, Hadis broj 1159."""
+error_current_date = "Greška pri dobijanju trenutnog datuma. Molimo pokušajte ponovo kasnije."
+error_schedule_white_days_message="Dogodila se greška pri zakazivanju obavijesti. Molimo pokušajte ponovo kasnije."
+error_general = "Dogodila se greška. Molimo pokušajte ponovo kasnije."

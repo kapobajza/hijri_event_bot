@@ -3,8 +3,8 @@ name: hijri-event-bot
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: hijri_event_bot/Dockerfile
     environment:
       - TELOXIDE_TOKEN=${TELEGRAM_BOT_TOKEN}
       - DB_PASSWORD=${POSTGRES_PASSWORD-postgres}

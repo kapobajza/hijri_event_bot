@@ -1,14 +1,15 @@
 use std::{collections::HashMap, sync::Arc};
 
+use bot_core::bot_core::BotCore;
 use sqlx::{Pool, Postgres, types::Uuid};
-use teloxide::{
-    ApiError, Bot, RequestError,
-    prelude::Requester,
-    repls::CommandReplExt,
-    types::{ChatId, Message},
-};
+use teloxide::{ApiError, Bot, RequestError, repls::CommandReplExt, types::Message};
 
-use crate::{api::HijriApi, command::Command, i18n::I18n, scheduler::Scheduler};
+use crate::{
+    api::HijriApi,
+    command::Command,
+    i18n::{instance::I18n, translation_key::TranslationKey},
+    scheduler::Scheduler,
+};
 
 pub struct TelegramBot {
     api: Arc<HijriApi>,
@@ -34,12 +35,6 @@ impl TelegramBot {
         }
     }
 
-    pub async fn send_message(bot: &Bot, chat_id: ChatId, text: String) {
-        if let Err(err) = bot.send_message(chat_id, &text).await {
-            error!("Failed to send message: {}", err);
-        }
-    }
-
     pub async fn run(&self) {
         log::info!("Starting Hijri bot...");
 
@@ -61,19 +56,18 @@ impl TelegramBot {
 
                     match cmd {
                         Command::Help => {
-                            TelegramBot::send_message(&bot, msg.chat.id, i18n.t("help")).await;
+                            BotCore::send_message(&bot, msg.chat.id, i18n.t(&TranslationKey::Help))
+                                .await;
                         }
                         Command::Date => {
                             let res = api.get_current_hijri_date().await;
 
                             match res {
-                                Err(e) => {
-                                    log::error!("Error fetching current Hijri date: {}", e);
-
-                                    TelegramBot::send_message(
+                                Err(_e) => {
+                                    BotCore::send_message(
                                         &bot,
                                         msg.chat.id,
-                                        i18n.t(&e.message_translation_key),
+                                        i18n.t(&TranslationKey::ErrorCurrentDate),
                                     )
                                     .await;
                                 }
@@ -86,10 +80,10 @@ impl TelegramBot {
                                     args.insert("month_name", response.month_name);
                                     args.insert("month_ar", response.month_ar);
 
-                                    TelegramBot::send_message(
+                                    BotCore::send_message(
                                         &bot,
                                         msg.chat.id,
-                                        i18n.t_with_args("current_hijri_date", args),
+                                        i18n.t_with_args(&TranslationKey::CurrentHijriDate, args),
                                     )
                                     .await;
                                 }
@@ -118,9 +112,16 @@ impl TelegramBot {
                             })?;
                             scheduler
                                 .schedule_white_days_message(bot.clone(), msg.chat.id.0, id)
-                                .await;
-                            TelegramBot::send_message(&bot, msg.chat.id, i18n.t("welcome_message"))
-                                .await;
+                                .await
+                                .map_err(|_e| {
+                                    RequestError::Api(ApiError::CantInitiateConversation)
+                                })?;
+                            BotCore::send_message(
+                                &bot,
+                                msg.chat.id,
+                                i18n.t(&TranslationKey::WelcomeMessage),
+                            )
+                            .await;
                         }
                     }
 

@@ -1,4 +1,4 @@
-use crate::{api::HijriApi, bot::TelegramBot, i18n::I18n, scheduler::Scheduler};
+use crate::{api::HijriApi, bot::TelegramBot, i18n::instance::I18n, scheduler::Scheduler};
 
 mod api;
 mod bot;

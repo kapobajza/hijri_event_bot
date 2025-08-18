@@ -5,7 +5,7 @@ use tokio_cron_scheduler::{
     store::{DataStore, InitStore},
 };
 
-use crate::db::tables::Job;
+use crate::db::tables::{Job, JobExtensionType, JobExtraData};
 
 pub struct PostgresMetadataStore {
     pool: sqlx::Pool<sqlx::Postgres>,
@@ -80,8 +80,45 @@ impl DataStore<JobStoredData> for PostgresMetadataStore {
 
         Box::pin(async move {
             let job: Job = data.into();
+            let extra_job_data = job.extra.clone().ok_or_else(|| {
+                log::error!("Job extra data is missing");
+                tokio_cron_scheduler::JobSchedulerError::CantAdd
+            })?;
+            let extra_job_data: JobExtraData =
+                serde_json::from_slice(&extra_job_data).map_err(|err| {
+                    log::error!("Failed to deserialize job extra data: {}", err);
+                    tokio_cron_scheduler::JobSchedulerError::CantAdd
+                })?;
 
-            sqlx::query!(
+            let user_has_job = sqlx::query_scalar!(
+                "
+                SELECT EXISTS(
+                    SELECT 1 FROM job_extensions AS je
+                    JOIN users_jobs AS uj ON uj.job_id = je.job_id
+                    WHERE je.type = $1 AND user_id = $2 LIMIT 1
+                )
+            ",
+                JobExtensionType::WhiteDaysMessage as i32,
+                extra_job_data.user_id
+            )
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| {
+                log::error!("Failed to check if user has job: {}", e);
+                tokio_cron_scheduler::JobSchedulerError::CantAdd
+            })?;
+
+            if user_has_job.unwrap_or(false) {
+                log::info!("User already has white days message job, skipping");
+                return Ok(());
+            }
+
+            let mut tx = pool.begin().await.map_err(|e| {
+                log::error!("Failed to begin transaction: {}", e);
+                tokio_cron_scheduler::JobSchedulerError::CantAdd
+            })?;
+
+            match sqlx::query!(
                 "
                 INSERT INTO jobs (id, last_updated, next_tick, last_tick, job_type, count, ran, stopped, schedule, repeating, repeated_every, time_offset_seconds, extra) \
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
@@ -112,10 +149,69 @@ impl DataStore<JobStoredData> for PostgresMetadataStore {
                 job.repeated_every.map(|i| i as i32),
                 job.time_offset_seconds,
                 job.extra,
-            ).execute(&pool)
+            ).execute(&mut *tx)
+            .await {
+                Ok(_) => {}
+                Err(e) => {
+                    tx.rollback().await.map_err(|e| {
+                        log::error!("Failed to rollback transaction: {}", e);
+                        tokio_cron_scheduler::JobSchedulerError::CantAdd
+                    })?;
+                    log::error!("Failed to insert or update job: {}, error: {}", job.id, e);
+                    return Err(tokio_cron_scheduler::JobSchedulerError::CantAdd);
+                }
+            }
+
+            match sqlx::query!(
+                "INSERT INTO job_extensions (job_id, type) VALUES ($1, $2)",
+                job.id,
+                extra_job_data.extension_type as i32
+            )
+            .execute(&mut *tx)
             .await
-            .map_err(|e| {
-                log::error!("Failed to add or update job: {}", e);
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    tx.rollback().await.map_err(|e| {
+                        log::error!("Failed to rollback transaction: {}", e);
+                        tokio_cron_scheduler::JobSchedulerError::CantAdd
+                    })?;
+                    log::error!(
+                        "Failed to insert job extension for job id: {}, error: {}",
+                        job.id,
+                        e
+                    );
+                    return Err(tokio_cron_scheduler::JobSchedulerError::CantAdd);
+                }
+            }
+
+            match sqlx::query!(
+                "INSERT INTO users_jobs (id, job_id, user_id) VALUES ($1, $2, $3)",
+                uuid::Uuid::new_v4(),
+                job.id,
+                extra_job_data.user_id
+            )
+            .execute(&mut *tx)
+            .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    tx.rollback().await.map_err(|e| {
+                        log::error!("Failed to rollback transaction: {}", e);
+                        tokio_cron_scheduler::JobSchedulerError::CantAdd
+                    })?;
+                    log::error!(
+                        "Failed to insert user job. job id: {}, user id: {}, error: {}",
+                        job.id,
+                        extra_job_data.user_id,
+                        e
+                    );
+                    return Err(tokio_cron_scheduler::JobSchedulerError::CantAdd);
+                }
+            }
+
+            tx.commit().await.map_err(|e| {
+                log::error!("Failed to commit transaction: {}", e);
                 tokio_cron_scheduler::JobSchedulerError::CantAdd
             })?;
 

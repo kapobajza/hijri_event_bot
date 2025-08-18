@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+use crate::i18n::translation_key::TranslationKey;
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum Language {
     Ba,
@@ -22,7 +24,7 @@ impl I18n {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let mut translations = HashMap::new();
 
-        let ba_content = include_str!("../locales/ba.toml");
+        let ba_content = include_str!("../../locales/ba.toml");
         let ba_messages: Messages = toml::from_str(ba_content)?;
 
         let current_language = Language::Ba;
@@ -35,13 +37,9 @@ impl I18n {
         })
     }
 
-    #[allow(dead_code)]
-    pub fn set_language(&mut self, language: Language) {
-        self.current_language = language;
-    }
-
-    pub fn t(&self, key: &str) -> String {
+    pub fn t(&self, key: &TranslationKey) -> String {
         let translations = self.translations.get(&self.current_language);
+        let key: &str = From::from(key);
 
         if let Some(translations) = translations {
             return translations
@@ -54,7 +52,7 @@ impl I18n {
         key.to_string()
     }
 
-    pub fn t_with_args(&self, key: &str, args: HashMap<&str, String>) -> String {
+    pub fn t_with_args(&self, key: &TranslationKey, args: HashMap<&str, String>) -> String {
         let mut translation = self.t(key);
 
         for (k, v) in args {

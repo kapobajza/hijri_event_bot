@@ -1,20 +1,16 @@
-[package]
-name = "hijri_event_bot"
-version = "1.0.0"
-edition = "2024"
-description = "A Telegram bot for Hijri calendar events"
+[workspace]
+resolver = "3"
+members = ["bot_core", "hadith_bot","hijri_event_bot"]
 license = "MIT"
 
-[dependencies]
+# sqlx = { workspace = true }
+# pretty_env_logger = { workspace = true }
+# log = { workspace = true }
+# teloxide = { workspace = true }
+
+[workspace.dependencies]
 teloxide = { version = "0.16.0", features = ["macros"] }
 log = "0.4"
-pretty_env_logger = "0.5"
-tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
-reqwest = "0.12.20"
-serde = "1.0.219"
-chrono = "0.4.41"
-serde_json = "1.0.140"
-toml = "0.8.23"
-tokio-cron-scheduler = { version = "0.14.0", features = ["has_bytes", "signal"]}
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "migrate", "uuid"] }
-chrono-tz = "0.10.4"
+pretty_env_logger = "0.5"
+
