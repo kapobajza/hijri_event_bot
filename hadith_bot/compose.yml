@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER-postgres}
+      - DB_NAME=${POSTGRES_DB-hadith_db}
+      - DB_HOST=db
+      - RUST_LOG=${RUST_LOG-info}
+      - RUST_BACKTRACE=${RUST_BACKTRACE-1}
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER-postgres}
+      POSTGRES_DB: ${POSTGRES_DB-hadith_db}
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT-5432}:5432"
+    volumes:
+      - hadith_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER-postgres} -d ${POSTGRES_DB-hadith_db}",
+        ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+volumes:
+  hadith_db_data:

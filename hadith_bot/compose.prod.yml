@@ -1,0 +1,27 @@
+services:
+  app:
+    image: ghcr.io/kapobajza/hadith_bot:${GIT_COMMIT_HASH-prod}
+    build: !reset null
+    secrets:
+      - db-password
+      - telegram-bot-token
+    environment:
+      - TELOXIDE_TOKEN=!reset null
+      - DB_PASSWORD=!reset null
+    deploy:
+      update_config:
+        order: start-first
+    depends_on:
+      - db
+
+  db:
+    secrets:
+      - db-password
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+
+secrets:
+  db-password:
+    external: true
+  telegram-bot-token:
+    external: true

@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                h.id,\n                h.text_bos,\n                h.transmitters_text,\n                STRING_AGG(hn.value::text, ', ' ORDER BY hn.value) AS hadith_numbers,\n                b.title AS book_title,\n                b.author AS book_author\n            FROM hadiths AS h\n            LEFT JOIN hadith_numbers AS hn ON hn.hadith_id = h.id\n            JOIN books AS b ON b.id = h.book_id\n            WHERE LENGTH(h.text_bos) < 10000\n            GROUP BY h.id, h.text_bos, h.transmitters_text, b.title, b.author\n            ORDER BY RANDOM()\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "text_bos",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "transmitters_text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "hadith_numbers",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "book_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "book_author",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "ef3bca8f77e0990adc99965b9eeda841d0a4768a1f685b788e474e5a5cfe0731"
+}

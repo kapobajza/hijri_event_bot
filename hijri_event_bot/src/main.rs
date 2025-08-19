@@ -1,3 +1,5 @@
+use bot_core::db::migrator::MigrationProject;
+
 use crate::{api::HijriApi, bot::TelegramBot, i18n::instance::I18n, scheduler::Scheduler};
 
 mod api;
@@ -15,7 +17,7 @@ extern crate log;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     pretty_env_logger::init();
-    use db::migrator::Migrator;
+    use bot_core::db::migrator::Migrator;
     use std::sync::Arc;
 
     let database_url = format!(
@@ -27,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::var("DB_NAME").unwrap_or("hijri_db".to_string())
     );
 
-    Migrator::run(&database_url).await?;
+    Migrator::run(&database_url, MigrationProject::HijriEventBot).await?;
 
     let i18n = Arc::new(I18n::new().expect("Failed to initialize i18n"));
     let api = Arc::new(HijriApi::new(i18n.clone()));

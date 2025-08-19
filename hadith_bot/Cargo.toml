@@ -4,3 +4,11 @@ version = "1.0.0"
 edition = "2024"
 
 [dependencies]
+teloxide = { workspace = true }
+log = { workspace = true }
+pretty_env_logger = { workspace = true }
+tokio-cron-scheduler = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+bot_core = { path = "../bot_core" }

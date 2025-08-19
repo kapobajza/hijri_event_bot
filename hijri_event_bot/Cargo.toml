@@ -7,13 +7,13 @@ edition = "2024"
 teloxide = { workspace = true }
 log = { workspace = true }
 pretty_env_logger = { workspace = true }
+tokio-cron-scheduler = { workspace = true }
 sqlx = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
 bot_core = { path = "../bot_core" }
-tokio = { version = "1.8", features = ["rt-multi-thread", "macros"] }
 serde = "1.0.219"
-chrono = "0.4.41"
 serde_json = { version = "1.0.140" }
-tokio-cron-scheduler = { version = "0.14.0", features = ["has_bytes", "signal"]}
 chrono-tz = "0.10.4"
 reqwest = "0.12.20"
 toml = "0.8.23"

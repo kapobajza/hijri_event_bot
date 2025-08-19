@@ -1,6 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
-use bot_core::bot_core::BotCore;
+use bot_core::{
+    bot_core::BotCore,
+    db::{
+        postgres_metadata_store::PostgresMetadataStore,
+        postgres_notification_store::PostgresNotificationStore,
+    },
+};
 use sqlx::{Pool, Postgres, types::Uuid};
 use teloxide::{Bot, types::ChatId};
 use tokio_cron_scheduler::{
@@ -9,11 +15,7 @@ use tokio_cron_scheduler::{
 
 use crate::{
     api::HijriApi,
-    db::{
-        postgres_metadata_store::PostgresMetadataStore,
-        postgres_notification_store::PostgresNotificationStore,
-        tables::{JobExtensionType, JobExtraData},
-    },
+    db::job::{JobCallbacks, JobExtensionType, JobExtraData},
     error::AppErrorKind,
     i18n::{instance::I18n, translation_key::TranslationKey},
 };
@@ -32,9 +34,12 @@ impl Scheduler {
         api: Arc<HijriApi>,
         i18n: Arc<I18n>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        let postgres_metadata_store =
+            PostgresMetadataStore::new(pool.clone()).with_callbacks(Arc::new(JobCallbacks));
+
         let mut sched = JobScheduler::new_with_storage_and_code(
-            Box::new(PostgresMetadataStore::new(pool.clone())),
-            Box::new(PostgresNotificationStore::new(pool.clone())),
+            Box::new(postgres_metadata_store),
+            Box::new(PostgresNotificationStore::new(pool)),
             Box::new(SimpleJobCode::default()),
             Box::new(SimpleNotificationCode::default()),
             200,

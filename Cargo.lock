@@ -137,10 +137,13 @@ dependencies = [
 name = "bot_core"
 version = "1.0.0"
 dependencies = [
+ "chrono",
  "log",
  "pretty_env_logger",
  "sqlx",
  "teloxide",
+ "tokio",
+ "tokio-cron-scheduler",
 ]
 
 [[package]]
@@ -726,6 +729,16 @@ dependencies = [
 [[package]]
 name = "hadith_bot"
 version = "1.0.0"
+dependencies = [
+ "bot_core",
+ "chrono",
+ "log",
+ "pretty_env_logger",
+ "sqlx",
+ "teloxide",
+ "tokio",
+ "tokio-cron-scheduler",
+]
 
 [[package]]
 name = "hashbrown"
