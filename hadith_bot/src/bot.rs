@@ -3,10 +3,7 @@ use std::sync::Arc;
 use bot_core::bot_core::BotCore;
 use sqlx::{Pool, Postgres};
 use teloxide::{
-    Bot,
-    prelude::Requester,
-    repls::CommandReplExt,
-    types::{BotName, Message},
+    prelude::Requester, repls::CommandReplExt, types::{BotName, Message}, ApiError, Bot, RequestError
 };
 
 use crate::{command::Command, db::HadithRepository, scheduler::Scheduler};
@@ -14,15 +11,17 @@ use crate::{command::Command, db::HadithRepository, scheduler::Scheduler};
 pub struct TelegramBot {
     hadith_repo: Arc<HadithRepository>,
     scheduler: Arc<Scheduler>,
+    pool: Arc<Pool<Postgres>>,
     bot: Bot,
 }
 
 impl TelegramBot {
     pub fn new(pool: Pool<Postgres>, scheduler: Scheduler) -> Self {
         Self {
-            hadith_repo: Arc::new(HadithRepository::new(pool)),
+            hadith_repo: Arc::new(HadithRepository::new(pool.clone())),
             scheduler: Arc::new(scheduler),
             bot: Bot::from_env(),
+            pool: Arc::new(pool),
         }
     }
 
@@ -32,10 +31,12 @@ impl TelegramBot {
         let scheduler = Arc::clone(&self.scheduler);
         let bot = self.bot.clone();
         let hadith_repo = Arc::clone(&self.hadith_repo);
+        let pool = Arc::clone(&self.pool);
 
         Command::repl(bot, move |bot: Bot, msg: Message, cmd: Command| {
             let scheduler = Arc::clone(&scheduler);
             let hadith_repo = Arc::clone(&hadith_repo);
+            let pool = Arc::clone(&pool);
 
             async move {
                 log::debug!("Received command: {:?}", cmd);
@@ -50,8 +51,27 @@ impl TelegramBot {
                         .await;
                     }
                     Command::Start => {
+                        log::debug!("User started the bot: {:?}", msg.chat.id);
+                        
+                        let id = sqlx::query_scalar!(
+                            "
+                                INSERT INTO users (chat_id) 
+                                VALUES ($1)
+                                ON CONFLICT (chat_id)
+                                DO UPDATE SET chat_id = EXCLUDED.chat_id
+                                RETURNING id
+                            ",
+                            msg.chat.id.0 as i64,
+                        )
+                        .fetch_one(&*pool)
+                        .await
+                        .map_err(|e| {
+                            log::error!("Failed to insert user: {}", e);
+                            RequestError::Api(ApiError::CantInitiateConversation)
+                        })?;
+                            
                         match scheduler
-                            .schedule_daily_hadith_job(bot.clone(), msg.chat.id)
+                            .schedule_daily_hadith_job(bot.clone(), msg.chat.id, id)
                             .await
                         {
                             Ok(_) => {

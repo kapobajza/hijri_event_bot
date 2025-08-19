@@ -3,8 +3,8 @@ services:
     image: ghcr.io/kapobajza/hadith_bot:${GIT_COMMIT_HASH-prod}
     build: !reset null
     secrets:
-      - db-password
-      - telegram-bot-token
+      - hadith-bot-db-password
+      - hadith-bot-telegram-token
     environment:
       - TELOXIDE_TOKEN=!reset null
       - DB_PASSWORD=!reset null
@@ -16,12 +16,12 @@ services:
 
   db:
     secrets:
-      - db-password
+      - hadith-bot-db-password
     environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+      POSTGRES_PASSWORD_FILE: /run/secrets/hadith-bot-db-password
 
 secrets:
-  db-password:
+  hadith-bot-db-password:
     external: true
-  telegram-bot-token:
+  hadith-bot-telegram-token:
     external: true

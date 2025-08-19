@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use bot_core::{
     bot_core::BotCore,
     db::{
+        job::{JobExtensionType, JobExtraData},
         postgres_metadata_store::PostgresMetadataStore,
         postgres_notification_store::PostgresNotificationStore,
     },
@@ -15,7 +16,6 @@ use tokio_cron_scheduler::{
 
 use crate::{
     api::HijriApi,
-    db::job::{JobCallbacks, JobExtensionType, JobExtraData},
     error::AppErrorKind,
     i18n::{instance::I18n, translation_key::TranslationKey},
 };
@@ -34,8 +34,7 @@ impl Scheduler {
         api: Arc<HijriApi>,
         i18n: Arc<I18n>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let postgres_metadata_store =
-            PostgresMetadataStore::new(pool.clone()).with_callbacks(Arc::new(JobCallbacks));
+        let postgres_metadata_store = PostgresMetadataStore::new(pool.clone());
 
         let mut sched = JobScheduler::new_with_storage_and_code(
             Box::new(postgres_metadata_store),

@@ -3,13 +3,16 @@ use std::sync::Arc;
 use bot_core::{
     bot_core::BotCore,
     db::{
+        job::{JobExtensionType, JobExtraData},
         postgres_metadata_store::PostgresMetadataStore,
         postgres_notification_store::PostgresNotificationStore,
     },
 };
-use sqlx::{Pool, Postgres};
+use sqlx::{Pool, Postgres, types::uuid};
 use teloxide::{Bot, types::ChatId};
-use tokio_cron_scheduler::{Job, JobScheduler, SimpleJobCode, SimpleNotificationCode};
+use tokio_cron_scheduler::{
+    Job, JobScheduler, SimpleJobCode, SimpleNotificationCode, job::job_data_prost::JobStoredData,
+};
 
 use crate::{db::HadithRepository, error::AppErrorKind};
 
@@ -56,11 +59,12 @@ impl Scheduler {
         &self,
         bot: Bot,
         chat_id: ChatId,
+        user_id: uuid::Uuid,
     ) -> Result<(), AppErrorKind> {
         let bot = Arc::new(bot);
         let hadith_repo = Arc::clone(&self.hadith_repo);
 
-        let daily_hadith_job = Job::new_async("0 0 8 * * *", move |_uuid, _l| {
+        let mut daily_hadith_job = Job::new_async("0 0 8 * * *", move |_uuid, _l| {
             let bot = bot.clone();
             let hadith_repo = hadith_repo.clone();
 
@@ -86,8 +90,32 @@ impl Scheduler {
             AppErrorKind::ScheduleDailyHadithJob
         })?;
 
+        let job_data = daily_hadith_job.job_data().map_err(|err| {
+            log::error!("Failed to get job data: {}", err);
+            AppErrorKind::ScheduleDailyHadithJob
+        })?;
+
+        let extra_data = serde_json::to_vec(&JobExtraData {
+            user_id,
+            extension_type: JobExtensionType::DailyHadithMessage,
+        })
+        .map_err(|err| {
+            log::error!("Failed to serialize job extra data: {}", err);
+            AppErrorKind::ScheduleDailyHadithJob
+        })?;
+
+        daily_hadith_job
+            .set_job_data(JobStoredData {
+                extra: extra_data,
+                ..job_data
+            })
+            .map_err(|err| {
+                log::error!("Failed to set job data: {}", err);
+                AppErrorKind::ScheduleDailyHadithJob
+            })?;
+
         self.sched.add(daily_hadith_job).await.map_err(|err| {
-            log::error!("Failed to schedule white days message job: {}", err);
+            log::error!("Failed to schedule daily hadith job: {}", err);
             AppErrorKind::ScheduleDailyHadithJob
         })?;
 

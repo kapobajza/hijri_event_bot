@@ -5,7 +5,6 @@ use crate::{api::HijriApi, bot::TelegramBot, i18n::instance::I18n, scheduler::Sc
 mod api;
 mod bot;
 mod command;
-mod db;
 mod error;
 mod i18n;
 mod scheduler;

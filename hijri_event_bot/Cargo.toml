@@ -12,8 +12,8 @@ sqlx = { workspace = true }
 tokio = { workspace = true }
 chrono = { workspace = true }
 bot_core = { path = "../bot_core" }
-serde = "1.0.219"
-serde_json = { version = "1.0.140" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 chrono-tz = "0.10.4"
 reqwest = "0.12.20"
 toml = "0.8.23"
