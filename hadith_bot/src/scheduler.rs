@@ -8,7 +8,7 @@ use bot_core::{
         postgres_notification_store::PostgresNotificationStore,
     },
 };
-use sqlx::{Pool, Postgres, types::uuid};
+use sqlx::{Pool, Postgres};
 use teloxide::{Bot, types::ChatId};
 use tokio_cron_scheduler::{
     Job, JobScheduler, SimpleJobCode, SimpleNotificationCode, job::job_data_prost::JobStoredData,
@@ -58,29 +58,94 @@ impl Scheduler {
     pub async fn schedule_daily_hadith_job(
         &self,
         bot: Bot,
-        chat_id: ChatId,
-        user_id: uuid::Uuid,
+        pool: Arc<Pool<Postgres>>,
     ) -> Result<(), AppErrorKind> {
         let bot = Arc::new(bot);
         let hadith_repo = Arc::clone(&self.hadith_repo);
 
-        let mut daily_hadith_job = Job::new_async("0 0 8 * * *", move |_uuid, _l| {
+        let job_with_type_exists = sqlx::query_scalar!(
+            "
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM job_extensions 
+                    WHERE type = $1
+                )
+            ",
+            JobExtensionType::DailyHadithMessage as i32,
+        )
+        .fetch_one(&*pool)
+        .await
+        .map_err(|e| {
+            log::error!("Failed to check for existing job: {}", e);
+            AppErrorKind::ScheduleDailyHadithJob
+        })?;
+
+        if job_with_type_exists.unwrap_or(false) {
+            log::info!(
+                "Job with type {:?} already exists, skipping creation.",
+                JobExtensionType::DailyHadithMessage
+            );
+            return Ok(());
+        }
+
+        let mut daily_hadith_job = Job::new_async("0 58 19 * * *", move |_uuid, _l| {
             let bot = bot.clone();
             let hadith_repo = hadith_repo.clone();
+            let pool = pool.clone();
 
             Box::pin(async move {
-                match hadith_repo.get_random_hadith_text().await {
-                    Ok(hadith) => {
-                        BotCore::send_message(&bot, chat_id, hadith).await;
+                let hadith_repo = hadith_repo.clone();
+                let bot = bot.clone();
+
+                let chat_handles_res = sqlx::query!("SELECT chat_id FROM users")
+                    .fetch_all(&*pool)
+                    .await
+                    .map_err(|e| {
+                        log::error!("Failed to fetch users: {}", e);
+                        AppErrorKind::SendDailyHadithMessage
+                    })
+                    .map(|rows| {
+                        let rows: Vec<i64> = rows.into_iter().map(|row| row.chat_id).collect();
+
+                        rows.into_iter().map(|chat_id| {
+                            let hadith_repo = hadith_repo.clone();
+                            let bot = bot.clone();
+
+                            tokio::spawn(async move {
+                                let chat_id = ChatId(chat_id);
+                                match hadith_repo.get_random_hadith_text().await {
+                                    Ok(hadith) => {
+                                        BotCore::send_message(&bot, chat_id, hadith).await;
+                                    }
+                                    Err(e) => {
+                                        log::error!("Failed to fetch daily hadith: {}", e);
+                                        BotCore::send_message(
+                                            &bot,
+                                            chat_id,
+                                            "Dogodila se greška. Pokušajte ponovo kasnije."
+                                                .to_string(),
+                                        )
+                                        .await;
+                                    }
+                                }
+                            })
+                        })
+                    });
+
+                match chat_handles_res {
+                    Ok(handles) => {
+                        let len = handles.len();
+
+                        for handle in handles {
+                            if let Err(e) = handle.await {
+                                log::error!("Error in daily hadith job: {}", e);
+                            }
+                        }
+
+                        log::info!("Successfully sent {} daily hadith messages", len);
                     }
                     Err(e) => {
-                        log::error!("Failed to fetch daily hadith: {}", e);
-                        BotCore::send_message(
-                            &bot,
-                            chat_id,
-                            "Dogodila se greška. Pokušajte kasnije.".to_string(),
-                        )
-                        .await;
+                        log::error!("Error fetching chat handles: {}", e);
                     }
                 }
             })
@@ -96,7 +161,6 @@ impl Scheduler {
         })?;
 
         let extra_data = serde_json::to_vec(&JobExtraData {
-            user_id,
             extension_type: JobExtensionType::DailyHadithMessage,
         })
         .map_err(|err| {

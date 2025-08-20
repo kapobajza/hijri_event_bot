@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                                SELECT EXISTS (\n                                    SELECT 1 \n                                    FROM job_extensions \n                                    WHERE type = $1\n                                )\n                            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2167509a4d5ae718492e7432cccdb8e8661b210f8cbcab81839eb805dc74a93d"
+}

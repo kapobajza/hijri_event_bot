@@ -92,7 +92,7 @@ impl TelegramBot {
                         Command::Start => {
                             log::debug!("User started the bot: {:?}", msg.chat.id);
                             let user_id = Uuid::new_v4();
-                            let id = sqlx::query_scalar!(
+                            sqlx::query!(
                                 "
                                     INSERT INTO users (id, chat_id, username) 
                                     VALUES ($1, $2, $3)
@@ -111,7 +111,7 @@ impl TelegramBot {
                                 RequestError::Api(ApiError::CantInitiateConversation)
                             })?;
                             scheduler
-                                .schedule_white_days_message(bot.clone(), msg.chat.id.0, id)
+                                .schedule_white_days_message(bot.clone(), msg.chat.id.0)
                                 .await
                                 .map_err(|_e| {
                                     RequestError::Api(ApiError::CantInitiateConversation)

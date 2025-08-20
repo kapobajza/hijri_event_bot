@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use teloxide::Bot;
+
 use crate::{bot::TelegramBot, error::AppErrorKind, scheduler::Scheduler};
 
 extern crate pretty_env_logger;
@@ -39,7 +43,11 @@ async fn main() -> Result<(), AppErrorKind> {
             AppErrorKind::DatabaseConnectionError
         })?;
     let scheduler = Scheduler::new(pool.clone()).await?;
-    let bot = TelegramBot::new(pool, scheduler);
+    let bot_from_env = Bot::from_env();
+    let bot = TelegramBot::new(pool.clone(), bot_from_env.clone());
+    scheduler
+        .schedule_daily_hadith_job(bot_from_env, Arc::new(pool))
+        .await?;
 
     bot.run().await;
 

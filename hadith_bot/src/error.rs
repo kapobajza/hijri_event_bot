@@ -7,6 +7,7 @@ pub enum AppErrorKind {
     GetRandomHadithFromDb,
     MigrationError,
     DatabaseConnectionError,
+    SendDailyHadithMessage,
 }
 
 impl Display for AppErrorKind {
@@ -24,6 +25,9 @@ impl Display for AppErrorKind {
             AppErrorKind::MigrationError => write!(f, "Database migration error"),
             AppErrorKind::DatabaseConnectionError => {
                 write!(f, "Failed to connect to the database")
+            }
+            AppErrorKind::SendDailyHadithMessage => {
+                write!(f, "Failed to send daily hadith message")
             }
         }
     }

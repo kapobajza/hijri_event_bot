@@ -8,7 +8,7 @@ use bot_core::{
         postgres_notification_store::PostgresNotificationStore,
     },
 };
-use sqlx::{Pool, Postgres, types::Uuid};
+use sqlx::{Pool, Postgres};
 use teloxide::{Bot, types::ChatId};
 use tokio_cron_scheduler::{
     Job, JobScheduler, SimpleJobCode, SimpleNotificationCode, job::job_data_prost::JobStoredData,
@@ -62,7 +62,6 @@ impl Scheduler {
         &self,
         bot: Bot,
         chat_id: i64,
-        user_id: Uuid,
     ) -> Result<(), AppErrorKind> {
         let api = Arc::clone(&self.api);
         let i18n = Arc::clone(&self.i18n);
@@ -118,7 +117,6 @@ impl Scheduler {
         })?;
 
         let extra_data = serde_json::to_vec(&JobExtraData {
-            user_id,
             extension_type: JobExtensionType::WhiteDaysMessage,
         })
         .map_err(|err| {
