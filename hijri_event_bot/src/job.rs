@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 #[derive(sqlx::Type, Serialize, Deserialize, Debug)]
 pub enum JobExtensionType {
     WhiteDaysMessage = 1,
-    DailyHadithMessage = 2,
 }
 
 impl From<i32> for JobExtensionType {

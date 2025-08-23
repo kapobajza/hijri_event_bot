@@ -3,8 +3,7 @@ use std::sync::Arc;
 use bot_core::{
     bot_core::BotCore,
     db::{
-        job::{JobExtensionType, JobExtraData},
-        postgres_metadata_store::PostgresMetadataStore,
+        postgres_metadata_store::{JobCallbacksExtension, PostgresMetadataStore},
         postgres_notification_store::PostgresNotificationStore,
     },
 };
@@ -14,17 +13,66 @@ use tokio_cron_scheduler::{
     Job, JobScheduler, SimpleJobCode, SimpleNotificationCode, job::job_data_prost::JobStoredData,
 };
 
-use crate::{db::HadithRepository, error::AppErrorKind};
+use crate::{
+    db::HadithRepository,
+    error::AppErrorKind,
+    job::{JobExtensionType, JobExtraData},
+};
 
 pub struct Scheduler {
     sched: JobScheduler,
     hadith_repo: Arc<HadithRepository>,
 }
 
+struct SchedulerCallbacks;
+
+impl JobCallbacksExtension for SchedulerCallbacks {
+    fn after_job_add<'a, 'tx>(
+        &'a self,
+        job: &'a bot_core::db::tables::Job,
+        tx: &'a mut sqlx::Transaction<'tx, Postgres>,
+    ) -> std::pin::Pin<
+        Box<dyn Future<Output = Result<(), tokio_cron_scheduler::JobSchedulerError>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            let extra_job_data = job.extra.clone().ok_or_else(|| {
+                log::error!("Job extra data is missing");
+                tokio_cron_scheduler::JobSchedulerError::CantAdd
+            })?;
+            let extra_job_data: JobExtraData =
+                serde_json::from_slice(&extra_job_data).map_err(|err| {
+                    log::error!("Failed to deserialize job extra data: {}", err);
+                    tokio_cron_scheduler::JobSchedulerError::CantAdd
+                })?;
+
+            sqlx::query!(
+                "INSERT INTO job_extensions (job_id, type) VALUES ($1, $2)",
+                job.id,
+                extra_job_data.extension_type as i32
+            )
+            .execute(&mut **tx)
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "Failed to insert job extension for job id: {}, error: {}",
+                    job.id,
+                    e
+                );
+                tokio_cron_scheduler::JobSchedulerError::CantAdd
+            })?;
+
+            Ok(())
+        })
+    }
+}
+
 impl Scheduler {
     pub async fn new(pool: Pool<Postgres>) -> Result<Self, AppErrorKind> {
         let mut sched = JobScheduler::new_with_storage_and_code(
-            Box::new(PostgresMetadataStore::new(pool.clone())),
+            Box::new(
+                PostgresMetadataStore::new(pool.clone())
+                    .with_callbacks(Arc::new(SchedulerCallbacks)),
+            ),
             Box::new(PostgresNotificationStore::new(pool.clone())),
             Box::new(SimpleJobCode::default()),
             Box::new(SimpleNotificationCode::default()),
@@ -88,7 +136,7 @@ impl Scheduler {
             return Ok(());
         }
 
-        let mut daily_hadith_job = Job::new_async("0 58 19 * * *", move |_uuid, _l| {
+        let mut daily_hadith_job = Job::new_async("0 0 8 * * *", move |_uuid, _l| {
             let bot = bot.clone();
             let hadith_repo = hadith_repo.clone();
             let pool = pool.clone();

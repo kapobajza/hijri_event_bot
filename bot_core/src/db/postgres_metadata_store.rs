@@ -1,21 +1,15 @@
 use std::{pin::Pin, sync::Arc};
 
-use sqlx::{Pool, Postgres, Transaction, types::uuid};
+use sqlx::{Postgres, Transaction, types::uuid};
 use tokio_cron_scheduler::{
     JobSchedulerError, MetaDataStorage,
     job::job_data_prost::JobStoredData,
     store::{DataStore, InitStore},
 };
 
-use crate::db::{job::JobExtraData, tables::Job};
+use crate::db::tables::Job;
 
 pub trait JobCallbacksExtension: Send + Sync + 'static {
-    fn before_job_add<'a>(
-        &'a self,
-        job: &'a Job,
-        pool: &'a Pool<Postgres>,
-    ) -> Pin<Box<dyn Future<Output = Result<bool, JobSchedulerError>> + Send + 'a>>;
-
     fn after_job_add<'a, 'tx>(
         &'a self,
         job: &'a Job,
@@ -102,6 +96,7 @@ impl DataStore<JobStoredData> for PostgresMetadataStore {
         Box<dyn Future<Output = Result<(), tokio_cron_scheduler::JobSchedulerError>> + Send>,
     > {
         let pool = self.pool.clone();
+        let callbacks = self.callbacks.clone();
 
         Box::pin(async move {
             let job: Job = data.into();
@@ -155,31 +150,20 @@ impl DataStore<JobStoredData> for PostgresMetadataStore {
                 }
             }
 
-            let extra_job_data = job.extra.clone().ok_or_else(|| {
-                log::error!("Job extra data is missing");
-                tokio_cron_scheduler::JobSchedulerError::CantAdd
-            })?;
-            let extra_job_data: JobExtraData =
-                serde_json::from_slice(&extra_job_data).map_err(|err| {
-                    log::error!("Failed to deserialize job extra data: {}", err);
-                    tokio_cron_scheduler::JobSchedulerError::CantAdd
-                })?;
-
-            sqlx::query!(
-                "INSERT INTO job_extensions (job_id, type) VALUES ($1, $2)",
-                job.id,
-                extra_job_data.extension_type as i32
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "Failed to insert job extension for job id: {}, error: {}",
-                    job.id,
-                    e
-                );
-                tokio_cron_scheduler::JobSchedulerError::CantAdd
-            })?;
+            if let Some(callbacks) = &callbacks {
+                if let Err(e) = callbacks.after_job_add(&job, &mut tx).await {
+                    tx.rollback().await.map_err(|e| {
+                        log::error!("Failed to rollback transaction: {}", e);
+                        JobSchedulerError::CantAdd
+                    })?;
+                    log::error!(
+                        "after_job_add callback failed for job id: {}, error: {}",
+                        job.id,
+                        e
+                    );
+                    return Err(tokio_cron_scheduler::JobSchedulerError::CantAdd);
+                }
+            }
 
             tx.commit().await.map_err(|e| {
                 log::error!("Failed to commit transaction: {}", e);

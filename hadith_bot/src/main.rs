@@ -12,6 +12,7 @@ mod bot;
 mod command;
 mod db;
 mod error;
+mod job;
 mod scheduler;
 
 #[tokio::main]

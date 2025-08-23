@@ -3,8 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use bot_core::{
     bot_core::BotCore,
     db::{
-        job::{JobExtensionType, JobExtraData},
-        postgres_metadata_store::PostgresMetadataStore,
+        postgres_metadata_store::{JobCallbacksExtension, PostgresMetadataStore},
         postgres_notification_store::PostgresNotificationStore,
     },
 };
@@ -18,7 +17,50 @@ use crate::{
     api::HijriApi,
     error::AppErrorKind,
     i18n::{instance::I18n, translation_key::TranslationKey},
+    job::{JobExtensionType, JobExtraData},
 };
+
+struct SchedulerCallbacks;
+
+impl JobCallbacksExtension for SchedulerCallbacks {
+    fn after_job_add<'a, 'tx>(
+        &'a self,
+        job: &'a bot_core::db::tables::Job,
+        tx: &'a mut sqlx::Transaction<'tx, Postgres>,
+    ) -> std::pin::Pin<
+        Box<dyn Future<Output = Result<(), tokio_cron_scheduler::JobSchedulerError>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            let extra_job_data = job.extra.clone().ok_or_else(|| {
+                log::error!("Job extra data is missing");
+                tokio_cron_scheduler::JobSchedulerError::CantAdd
+            })?;
+            let extra_job_data: JobExtraData =
+                serde_json::from_slice(&extra_job_data).map_err(|err| {
+                    log::error!("Failed to deserialize job extra data: {}", err);
+                    tokio_cron_scheduler::JobSchedulerError::CantAdd
+                })?;
+
+            sqlx::query!(
+                "INSERT INTO job_extensions (job_id, type) VALUES ($1, $2)",
+                job.id,
+                extra_job_data.extension_type as i32
+            )
+            .execute(&mut **tx)
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "Failed to insert job extension for job id: {}, error: {}",
+                    job.id,
+                    e
+                );
+                tokio_cron_scheduler::JobSchedulerError::CantAdd
+            })?;
+
+            Ok(())
+        })
+    }
+}
 
 pub struct Scheduler {
     api: Arc<HijriApi>,
@@ -34,7 +76,8 @@ impl Scheduler {
         api: Arc<HijriApi>,
         i18n: Arc<I18n>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let postgres_metadata_store = PostgresMetadataStore::new(pool.clone());
+        let postgres_metadata_store =
+            PostgresMetadataStore::new(pool.clone()).with_callbacks(Arc::new(SchedulerCallbacks));
 
         let mut sched = JobScheduler::new_with_storage_and_code(
             Box::new(postgres_metadata_store),

@@ -7,6 +7,7 @@ mod bot;
 mod command;
 mod error;
 mod i18n;
+mod job;
 mod scheduler;
 
 extern crate pretty_env_logger;
